@@ -74,7 +74,6 @@ public class GameView extends View {
         moving = false;
         invalidate();
    }
-}
 
     private void drawHome(Canvas c, float w, float h) {
         p.setTextAlign(Paint.Align.CENTER);
