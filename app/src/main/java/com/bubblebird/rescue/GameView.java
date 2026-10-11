@@ -14,6 +14,7 @@ import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.Purchase;
@@ -69,7 +70,7 @@ public class GameView extends View {
         p.setTypeface(Typeface.DEFAULT_BOLD);
 
         billingClient = BillingClient.newBuilder(context)
-            .enablePendingPurchases()
+            .enablePendingPurchases(PendingPurchasesParams.newBuilder().enableOneTimeProducts().build())
             .setListener((billingResult, purchases) -> {
                 if (billingResult.getResponseCode() ==
                         BillingClient.BillingResponseCode.OK && purchases != null) {
