@@ -736,4 +736,42 @@ private void drawPause(Canvas c, float w, float h) {
 
         return false;
     }
+
+    private void drawBubble(Canvas c, float x, float y, float radius, int colorIndex) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(colors[Math.max(0, Math.min(colorIndex, colors.length - 1))]);
+        c.drawCircle(x, y, radius, p);
+
+        p.setColor(Color.argb(90, 255, 255, 255));
+        c.drawCircle(x - radius * 0.30f, y - radius * 0.30f, radius * 0.25f, p);
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(2);
+        p.setColor(Color.argb(100, 255, 255, 255));
+        c.drawCircle(x, y, radius, p);
+
+        p.setStyle(Paint.Style.FILL);
+    }
+
+    private void button(Canvas c, float left, float top, float right, float bottom,
+                        String text, int color) {
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(color);
+        c.drawRoundRect(
+            new RectF(left, top, right, bottom),
+            18, 18, p
+        );
+
+        p.setColor(Color.WHITE);
+        p.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        p.setTextSize(18);
+        p.setTextAlign(Paint.Align.CENTER);
+
+        Paint.FontMetrics fm = p.getFontMetrics();
+        float textY = (top + bottom) / 2f - (fm.ascent + fm.descent) / 2f;
+
+        c.drawText(text, (left + right) / 2f, textY, p);
+
+        p.setTypeface(Typeface.DEFAULT);
+    }
 }
