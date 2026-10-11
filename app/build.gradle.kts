@@ -16,4 +16,5 @@ android {
 }
 
 dependencies {
+    implementation("com.android.billingclient:billing:9.1.0")
 }

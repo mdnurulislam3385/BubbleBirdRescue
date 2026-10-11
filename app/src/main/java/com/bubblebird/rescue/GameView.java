@@ -10,6 +10,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Toast;
 
+import com.android.billingclient.api.BillingClient;
+import com.android.billingclient.api.BillingClientStateListener;
+import com.android.billingclient.api.BillingFlowParams;
+import com.android.billingclient.api.BillingResult;
+import com.android.billingclient.api.ProductDetails;
+import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.Purchase;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -18,6 +26,10 @@ public class GameView extends View {
 
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Random random = new Random();
+
+    private BillingClient billingClient;
+    private ProductDetails hintProductDetails;
+    private static final String HINT_PRODUCT_ID = "hint_pack_10";
 
     private static final int ROWS = 11;
     private static final int COLS = 8;
@@ -55,7 +67,116 @@ public class GameView extends View {
     public GameView(Context context) {
         super(context);
         p.setTypeface(Typeface.DEFAULT_BOLD);
+
+        billingClient = BillingClient.newBuilder(context)
+            .enablePendingPurchases()
+            .setListener((billingResult, purchases) -> {
+                if (billingResult.getResponseCode() ==
+                        BillingClient.BillingResponseCode.OK && purchases != null) {
+
+                    for (Purchase purchase : purchases) {
+                        if (purchase.getPurchaseState() ==
+                                Purchase.PurchaseState.PURCHASED) {
+
+                            hints += 10;
+                            Toast.makeText(
+                                getContext(),
+                                "10 hints added!",
+                                Toast.LENGTH_SHORT
+                            ).show();
+
+                            if (!purchase.isAcknowledged()) {
+                                billingClient.acknowledgePurchase(
+                                    com.android.billingclient.api.AcknowledgePurchaseParams
+                                        .newBuilder()
+                                        .setPurchaseToken(purchase.getPurchaseToken())
+                                        .build(),
+                                    result -> {}
+                                );
+                            }
+                        }
+                    }
+
+                    invalidate();
+                }
+            })
+            .build();
+
+        connectBilling();
+
         resetBoard();
+    }
+
+    private void connectBilling() {
+        billingClient.startConnection(new BillingClientStateListener() {
+            @Override
+            public void onBillingSetupFinished(BillingResult result) {
+                if (result.getResponseCode() ==
+                        BillingClient.BillingResponseCode.OK) {
+                    queryHintProduct();
+                }
+            }
+
+            @Override
+            public void onBillingServiceDisconnected() {
+            }
+        });
+    }
+
+    private void queryHintProduct() {
+        QueryProductDetailsParams params =
+            QueryProductDetailsParams.newBuilder()
+                .setProductList(java.util.Collections.singletonList(
+                    QueryProductDetailsParams.Product.newBuilder()
+                        .setProductId(HINT_PRODUCT_ID)
+                        .setProductType(
+                            BillingClient.ProductType.INAPP
+                        )
+                        .build()
+                ))
+                .build();
+
+        billingClient.queryProductDetailsAsync(
+            params,
+            (result, productDetailsResult) -> {
+                if (result.getResponseCode() ==
+                        BillingClient.BillingResponseCode.OK &&
+                    productDetailsResult.getProductDetailsList() != null &&
+                    !productDetailsResult.getProductDetailsList().isEmpty()) {
+
+                    hintProductDetails =
+                        productDetailsResult.getProductDetailsList().get(0);
+                }
+            }
+        );
+    }
+
+    private void buyHints() {
+        if (hintProductDetails == null) {
+            Toast.makeText(
+                getContext(),
+                "Google Play product is not ready yet.",
+                Toast.LENGTH_LONG
+            ).show();
+            return;
+        }
+
+        BillingFlowParams.ProductDetailsParams productParams =
+            BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(hintProductDetails)
+                .build();
+
+        BillingFlowParams flowParams =
+            BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(
+                    java.util.Collections.singletonList(productParams)
+                )
+                .build();
+
+        billingClient.launchBillingFlow(
+            (android.app.Activity) getContext(),
+            flowParams
+        );
     }
 
     private void resetBoard() {
@@ -202,13 +323,13 @@ public class GameView extends View {
 
         c.drawText(
             "Birds rescued: " + rescued + "/10",
-            18,h-136,p
+            18,h-154,p
         );
 
         p.setColor(Color.rgb(45,55,85));
 
         c.drawRoundRect(
-            new RectF(18,h-124,w-18,h-112),
+            new RectF(18,h-142,w-18,h-130),
             8,8,p
         );
 
@@ -218,9 +339,9 @@ public class GameView extends View {
 
         c.drawRoundRect(
             new RectF(
-                18,h-124,
+                18,h-142,
                 18+(w-36)*progress,
-                h-112
+                h-130
             ),
             8,8,p
         );
@@ -399,12 +520,7 @@ private void drawPause(Canvas c, float w, float h) {
 
             if (y > h-55 && x >= w*.50f) {
 
-                Toast.makeText(
-                    getContext(),
-                    "Hint purchase will be connected to Google Play.",
-                    Toast.LENGTH_LONG
-                ).show();
-
+                buyHints();
                 return true;
             }
 
