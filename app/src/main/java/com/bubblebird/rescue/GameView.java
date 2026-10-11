@@ -75,6 +75,13 @@ public class GameView extends View {
         invalidate();
    }
 
+    private void startGame() {
+        screen = PLAYING;
+        rescued = 0;
+        moving = false;
+        resetBoard();
+    }
+
     private void drawHome(Canvas c, float w, float h) {
         p.setTextAlign(Paint.Align.CENTER);
 
