@@ -4,272 +4,160 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Typeface;
+import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class GameView extends View {
 
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Random random = new Random();
 
-    private final ArrayList<Bubble> bubbles = new ArrayList<>();
+    private static final int ROWS = 11;
+    private static final int COLS = 8;
+
+    private final int[][] board = new int[ROWS][COLS];
 
     private float shooterX;
     private float shooterY;
-
     private float aimX;
     private float aimY;
 
-    private int score = 0;
-    private int birds = 0;
+    private int currentBubble;
+    private int nextBubble;
 
-    private boolean shooting = false;
-    private float shotX;
-    private float shotY;
-    private float shotDX;
-    private float shotDY;
-    private int shotColor;
+    private int score = 0;
+    private int shots = 0;
+    private int rescued = 0;
+
+    private boolean moving = false;
+    private float ballX;
+    private float ballY;
+    private float vx;
+    private float vy;
 
     private final int[] bubbleColors = {
             Color.rgb(255, 82, 82),
-            Color.rgb(66, 133, 244),
             Color.rgb(255, 193, 7),
-            Color.rgb(156, 39, 176),
-            Color.rgb(0, 200, 83)
+            Color.rgb(66, 165, 245),
+            Color.rgb(102, 187, 106),
+            Color.rgb(171, 71, 188)
     };
 
     public GameView(Context context) {
         super(context);
 
-        paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        paint.setTypeface(android.graphics.Typeface.create(
+                "sans-serif", android.graphics.Typeface.BOLD));
 
-        for (int row = 0; row < 5; row++) {
-            for (int col = 0; col < 8; col++) {
-                float x = 55 + col * 82;
-                if (row % 2 == 1) {
-                    x += 41;
-                }
+        newGame();
+    }
 
-                bubbles.add(
-                        new Bubble(
-                                x,
-                                150 + row * 75,
-                                bubbleColors[random.nextInt(bubbleColors.length)]
-                        )
-                );
+    private void newGame() {
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
+                board[r][c] = -1;
             }
         }
 
-        setFocusable(true);
+        for (int r = 0; r < 5; r++) {
+            for (int c = 0; c < COLS; c++) {
+                board[r][c] = random.nextInt(bubbleColors.length);
+            }
+        }
+
+        score = 0;
+        shots = 0;
+        rescued = 0;
+
+        currentBubble = random.nextInt(bubbleColors.length);
+        nextBubble = random.nextInt(bubbleColors.length);
+
+        moving = false;
+
+        invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
-        canvas.drawColor(Color.rgb(12, 25, 45));
+        float w = getWidth();
+        float h = getHeight();
 
-        drawTopBar(canvas);
-        drawBubbles(canvas);
-        drawBirds(canvas);
-        drawShooter(canvas);
-
-        if (shooting) {
-            drawShot(canvas);
-            updateShot();
-            postInvalidateDelayed(16);
-        }
-    }
-
-    private void drawTopBar(Canvas canvas) {
-
-        paint.setColor(Color.WHITE);
-        paint.setTextSize(42);
-
-        canvas.drawText("🐦 Bubble Bird Rescue", 30, 55, paint);
-
-        paint.setTextSize(30);
-        canvas.drawText("Score: " + score, 30, 100, paint);
-
-        canvas.drawText("Birds: " + birds + "/10", 400, 100, paint);
-    }
-
-    private void drawBubbles(Canvas canvas) {
-
-        for (Bubble b : bubbles) {
-            paint.setColor(b.color);
-            canvas.drawCircle(b.x, b.y, 31, paint);
-
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(3);
-            paint.setColor(Color.WHITE);
-            canvas.drawCircle(b.x, b.y, 31, paint);
-            paint.setStyle(Paint.Style.FILL);
-        }
-    }
-
-    private void drawBirds(Canvas canvas) {
-
-        paint.setTextSize(38);
-
-        for (int i = 0; i < birds; i++) {
-            canvas.drawText("🐥", 35 + i * 55, 550, paint);
-        }
-    }
-
-    private void drawShooter(Canvas canvas) {
-
-        shooterX = getWidth() / 2f;
-        shooterY = getHeight() - 100;
-
-        paint.setColor(Color.WHITE);
-        canvas.drawCircle(shooterX, shooterY, 42, paint);
-
-        paint.setColor(Color.rgb(0, 200, 83));
-        canvas.drawCircle(shooterX, shooterY, 32, paint);
-
-        paint.setColor(Color.WHITE);
-        paint.setTextSize(28);
-        canvas.drawText("AIM & SHOOT", shooterX - 85, shooterY + 80, paint);
-
-        if (!shooting && aimY < shooterY) {
-            paint.setColor(Color.WHITE);
-            paint.setStrokeWidth(5);
-            canvas.drawLine(
-                    shooterX,
-                    shooterY,
-                    aimX,
-                    aimY,
-                    paint
-            );
-        }
-    }
-
-    private void drawShot(Canvas canvas) {
-
-        paint.setColor(shotColor);
-        canvas.drawCircle(shotX, shotY, 24, paint);
-
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(3);
-        paint.setColor(Color.WHITE);
-        canvas.drawCircle(shotX, shotY, 24, paint);
         paint.setStyle(Paint.Style.FILL);
+        paint.setColor(Color.rgb(10, 18, 40));
+        canvas.drawRect(0, 0, w, h, paint);
+
+        drawHeader(canvas, w);
+        drawBoard(canvas, w, h);
+        drawAim(canvas);
+        drawShooter(canvas, w, h);
+
+        if (moving) {
+            drawMovingBubble(canvas);
+        }
     }
 
-    private void updateShot() {
+    private void drawHeader(Canvas canvas, float w) {
+        paint.setColor(Color.rgb(25, 39, 75));
+        canvas.drawRoundRect(
+                new RectF(18, 18, w - 18, 88),
+                22, 22, paint);
 
-        shotX += shotDX;
-        shotY += shotDY;
+        paint.setTextSize(22);
+        paint.setColor(Color.WHITE);
+        canvas.drawText("Bubble Bird Rescue", 35, 48, paint);
 
-        if (shotX < 20 || shotX > getWidth() - 20) {
-            shotDX *= -1;
-        }
+        paint.setTextSize(16);
+        paint.setColor(Color.rgb(190, 210, 255));
 
-        for (int i = bubbles.size() - 1; i >= 0; i--) {
+        canvas.drawText("Score: " + score, 35, 73, paint);
+        canvas.drawText("Birds: " + rescued + "/10", w - 125, 73, paint);
+    }
 
-            Bubble b = bubbles.get(i);
+    private void drawBoard(Canvas canvas, float w, float h) {
+        float top = 110;
+        float bottom = h - 155;
 
-            float dx = shotX - b.x;
-            float dy = shotY - b.y;
+        float cellW = w / COLS;
+        float cellH = (bottom - top) / ROWS;
 
-            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+        for (int r = 0; r < ROWS; r++) {
+            for (int c = 0; c < COLS; c++) {
 
-            if (distance < 50) {
-
-                if (b.color == shotColor) {
-
-                    bubbles.remove(i);
-                    score += 10;
-
-                    if (score % 50 == 0 && birds < 10) {
-                        birds++;
-                    }
-
-                } else {
-
-                    b.y += 65;
-
-                    if (b.y > 500 && birds < 10) {
-                        birds++;
-                    }
+                if (board[r][c] == -1) {
+                    continue;
                 }
 
-                shooting = false;
-                break;
+                float cx = c * cellW + cellW / 2f;
+                float cy = top + r * cellH + cellH / 2f;
+
+                drawBubble(
+                        canvas,
+                        cx,
+                        cy,
+                        Math.min(cellW, cellH) * 0.40f,
+                        board[r][c]
+                );
             }
         }
 
-        if (shotY < 120) {
-            shooting = false;
+        // small rescued birds
+        for (int i = 0; i < rescued; i++) {
+            float bx = 35 + (i % 10) * 34;
+            float by = bottom + 20 + (i / 10) * 30;
+
+            paint.setTextSize(22);
+            canvas.drawText("🐦", bx, by, paint);
         }
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-
-        if (event.getAction() == MotionEvent.ACTION_DOWN) {
-
-            aimX = event.getX();
-            aimY = event.getY();
-
-            if (!shooting && aimY < shooterY) {
-                shoot();
-            }
-
-            invalidate();
-            return true;
-        }
-
-        if (event.getAction() == MotionEvent.ACTION_MOVE) {
-
-            aimX = event.getX();
-            aimY = event.getY();
-
-            invalidate();
-            return true;
-        }
-
-        return true;
-    }
-
-    private void shoot() {
-
-        shooting = true;
-
-        shotX = shooterX;
-        shotY = shooterY;
-
-        float dx = aimX - shooterX;
-        float dy = aimY - shooterY;
-
-        float length = (float) Math.sqrt(dx * dx + dy * dy);
-
-        if (length < 1) {
-            length = 1;
-        }
-
-        shotDX = dx / length * 18;
-        shotDY = dy / length * 18;
-
-        shotColor =
-                bubbleColors[random.nextInt(bubbleColors.length)];
-    }
-
-    private static class Bubble {
-
-        float x;
-        float y;
-        int color;
-
-        Bubble(float x, float y, int color) {
-            this.x = x;
-            this.y = y;
-            this.color = color;
-        }
-    }
-}
+    private void drawAim(Canvas canvas) {
+        if (
