@@ -82,6 +82,29 @@ public class GameView extends View {
         resetBoard();
     }
 
+    @Override
+    protected void onDraw(Canvas c) {
+        super.onDraw(c);
+        float w = getWidth();
+        float h = getHeight();
+
+        c.drawColor(Color.rgb(10, 18, 40));
+
+        if (screen == HOME) {
+            drawHome(c, w, h);
+        } else if (screen == PLAYING) {
+            drawGame(c, w, h);
+        } else if (screen == PAUSED) {
+            drawGame(c, w, h);
+            drawPause(c, w, h);
+        } else if (screen == COMPLETE) {
+            drawComplete(c, w, h);
+        } else if (screen == GAME_OVER) {
+            drawGameOver(c, w, h);
+        }
+    }
+
+
     private void drawHome(Canvas c, float w, float h) {
         p.setTextAlign(Paint.Align.CENTER);
 
