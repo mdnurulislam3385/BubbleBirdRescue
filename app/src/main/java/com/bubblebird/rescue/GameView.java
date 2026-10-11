@@ -271,8 +271,8 @@ private void drawPause(Canvas c, float w, float h) {
     button(c,w*.18f,h*.52f,w*.82f,h*.61f,
         "RESUME",Color.rgb(30,190,130));
 
-    button(c,w*.18f,h*.64f,w*.82f,h*.73f,
-
+        button(c,w*.18f,h*.64f,w*.82f,h*.73f,
+            "HOME",Color.rgb(55,100,185));
     p.setTextAlign(Paint.Align.LEFT);
 }
 
